@@ -1,0 +1,13 @@
+# 构建产物（由 XcodeGen / xcodebuild / 脚本生成）
+build/
+Payload/
+*.ipa
+*.xcodeproj
+xcuserdata/
+DerivedData/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 打包缓存：articles.json 由 publish 脚本从桌面 workbuddy 生成后提交，这里不忽略
