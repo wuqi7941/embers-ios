@@ -41,6 +41,34 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             build
 
+      - name: Build for simulator (smoke test)
+        run: |
+          xcodebuild -project Embers.xcodeproj \
+            -scheme Embers \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -derivedDataPath buildsim build
+
+      - name: Launch on simulator & screenshot
+        run: |
+          set -e
+          DEV=$(xcrun simctl list devices available | grep -E 'iPhone (16|15|14)' | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')
+          echo "device: $DEV"
+          xcrun simctl boot "$DEV" 2>/dev/null || true
+          xcrun simctl bootstatus "$DEV" -b 2>/dev/null || true
+          xcrun simctl install "$DEV" "buildsim/Build/Products/Debug-iphonesimulator/Embers.app"
+          xcrun simctl launch "$DEV" com.guanjin.embers || echo "simctl launch failed"
+          sleep 8
+          xcrun simctl io "$DEV" screenshot embers-screen.png
+          echo "screenshot saved"
+
+      - name: Upload smoke-test screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: embers-screenshot
+          path: embers-screen.png
+          if-no-files-found: warn
+
       - name: Package unsigned IPA
         run: |
           mkdir -p Payload
