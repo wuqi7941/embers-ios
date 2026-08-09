@@ -49,7 +49,7 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 16' \
             -derivedDataPath buildsim build
 
-      - name: Launch on simulator & screenshot
+      - name: Launch on simulator & capture logs
         run: |
           set -e
           DEV=$(xcrun simctl list devices available | grep -E 'iPhone (16|15|14)' | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')
@@ -57,16 +57,23 @@ jobs:
           xcrun simctl boot "$DEV" 2>/dev/null || true
           xcrun simctl bootstatus "$DEV" -b 2>/dev/null || true
           xcrun simctl install "$DEV" "buildsim/Build/Products/Debug-iphonesimulator/Embers.app"
-          xcrun simctl launch "$DEV" com.guanjin.embers || echo "simctl launch failed"
-          sleep 8
+          (xcrun simctl launch --console-pty "$DEV" com.guanjin.embers > embers-stdout.log 2>&1 &) || true
+          sleep 9
+          xcrun simctl spawn "$DEV" log show --last 30s --predicate 'processImagePath CONTAINS "Embers"' --style compact > embers-app.log 2>&1 || true
           xcrun simctl io "$DEV" screenshot embers-screen.png
-          echo "screenshot saved"
+          echo "--- app stdout ---"
+          cat embers-stdout.log 2>/dev/null || true
+          echo "--- system log grep DIAG ---"
+          grep -a 'DIAG' embers-app.log 2>/dev/null || true
 
-      - name: Upload smoke-test screenshot
+      - name: Upload logs & smoke-test screenshot
         uses: actions/upload-artifact@v4
         with:
-          name: embers-screenshot
-          path: embers-screen.png
+          name: embers-diagnostics
+          path: |
+            embers-stdout.log
+            embers-app.log
+            embers-screen.png
           if-no-files-found: warn
 
       - name: Package unsigned IPA
