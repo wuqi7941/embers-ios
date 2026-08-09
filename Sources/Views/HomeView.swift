@@ -74,9 +74,19 @@ struct HomeView: View {
             Text("尚未装入文字")
                 .font(Ember.serif(18))
                 .foregroundStyle(Ember.ash)
-            Text("用 publish 脚本从桌面 workbuddy 打包文章。")
-                .font(.system(size: 13))
-                .foregroundStyle(Ember.ash.opacity(0.6))
+            if store.articles.isEmpty && !store.diagnostics.isEmpty {
+                Text(store.diagnostics)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(Ember.ash.opacity(0.75))
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Ember.panel, in: RoundedRectangle(cornerRadius: 12))
+            } else {
+                Text("用 publish 脚本从桌面 workbuddy 打包文章。")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Ember.ash.opacity(0.6))
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 60)
