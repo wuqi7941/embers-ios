@@ -1,0 +1,60 @@
+# 触发任意 push（含 workflow_dispatch 手动触发），在 macOS 云端编译出未签名 IPA
+name: Build IPA
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'Sources/**'
+      - 'Resources/**'
+      - 'project.yml'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+concurrency:
+  group: build-ipa
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (unsigned, Release)
+        run: |
+          xcodebuild -project Embers.xcodeproj \
+            -scheme Embers \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R "build/Build/Products/Release-iphoneos/Embers.app" Payload/
+          zip -r -y "Embers-unsigned.ipa" Payload
+          rm -rf Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Embers-unsigned-ipa
+          path: Embers-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Print size
+        run: ls -lh Embers-unsigned.ipa
